@@ -41,7 +41,7 @@ const sections = [
   },
   {
     title: "Certifications",
-    description: "Track certifications and continuing education in one place.",
+    description: "Track certifications & continuing education in one place.",
     content: <Certifications />,
   },
   {
