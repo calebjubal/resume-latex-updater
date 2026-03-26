@@ -1,79 +1,186 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
 import { useResume } from "@/lib/resume-context";
 import { generateLatex } from "@/lib/latex-template";
+import { useState } from "react";
+import type { ResumeData } from "@/lib/default-resume";
+
+function ResumeDocument({ data }: { data: ResumeData }) {
+  const { contact, summary, skills, experience, projects, education, certifications, achievements } = data;
+
+  return (
+    <div className="resume-document font-serif text-[11pt] leading-[1.4] text-black">
+      {/* Contact Header */}
+      <div className="mb-1 text-center">
+        <h1 className="text-[20pt] font-bold leading-tight">{contact.name}</h1>
+        <p className="text-[13pt]">{contact.title}</p>
+        <p className="mt-1 text-[9pt] text-gray-700">
+          {[
+            contact.email,
+            contact.phone,
+            contact.location,
+            contact.linkedin,
+            contact.github,
+            contact.website,
+          ]
+            .filter(Boolean)
+            .join(" | ")}
+        </p>
+      </div>
+      <hr className="my-2 border-t border-black" />
+
+      {/* Summary */}
+      {summary.text && (
+        <section className="mb-3">
+          <h2 className="mb-1 border-b border-gray-400 text-[13pt] font-bold">
+            Summary
+          </h2>
+          <p className="text-[10pt]">{summary.text}</p>
+        </section>
+      )}
+
+      {/* Skills */}
+      {skills.length > 0 && (
+        <section className="mb-3">
+          <h2 className="mb-1 border-b border-gray-400 text-[13pt] font-bold">
+            Skills
+          </h2>
+          {skills.map((cat) => (
+            <p key={cat.category} className="text-[10pt]">
+              <strong>{cat.category}:</strong> {cat.items.join(", ")}
+            </p>
+          ))}
+        </section>
+      )}
+
+      {/* Experience */}
+      {experience.length > 0 && (
+        <section className="mb-3">
+          <h2 className="mb-1 border-b border-gray-400 text-[13pt] font-bold">
+            Experience
+          </h2>
+          {experience.map((entry, i) => (
+            <div key={i} className="mb-2">
+              <div className="flex items-baseline justify-between">
+                <strong className="text-[10.5pt]">{entry.role}</strong>
+                <span className="text-[9pt] italic">
+                  {entry.startDate} — {entry.endDate}
+                </span>
+              </div>
+              <p className="text-[10pt] italic text-gray-800">
+                {entry.company}, {entry.location}
+              </p>
+              {entry.bullets.filter((b) => b.trim()).length > 0 && (
+                <ul className="ml-5 mt-0.5 list-disc">
+                  {entry.bullets
+                    .filter((b) => b.trim())
+                    .map((b, j) => (
+                      <li key={j} className="text-[9.5pt] leading-snug">
+                        {b}
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/* Projects */}
+      {projects.length > 0 && (
+        <section className="mb-3">
+          <h2 className="mb-1 border-b border-gray-400 text-[13pt] font-bold">
+            Projects
+          </h2>
+          {projects.map((p, i) => (
+            <div key={i} className="mb-1.5">
+              <p className="text-[10.5pt]">
+                <strong>{p.name}</strong>{" "}
+                <span className="italic text-gray-700">
+                  ({p.techStack.join(", ")})
+                </span>
+              </p>
+              <p className="text-[9.5pt]">{p.description}</p>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/* Education */}
+      {education.length > 0 && (
+        <section className="mb-3">
+          <h2 className="mb-1 border-b border-gray-400 text-[13pt] font-bold">
+            Education
+          </h2>
+          {education.map((e, i) => (
+            <div key={i} className="mb-1">
+              <div className="flex items-baseline justify-between">
+                <strong className="text-[10.5pt]">{e.degree}</strong>
+                <span className="text-[9pt] italic">
+                  {e.startDate} — {e.endDate}
+                </span>
+              </div>
+              <p className="text-[10pt] italic text-gray-800">
+                {e.institution}, {e.location}
+              </p>
+              {e.gpa && (
+                <p className="text-[9.5pt]">GPA: {e.gpa}</p>
+              )}
+              {e.coursework && e.coursework.length > 0 && (
+                <p className="text-[9.5pt]">
+                  <em>Coursework:</em> {e.coursework.join(", ")}
+                </p>
+              )}
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/* Certifications */}
+      {certifications.length > 0 && (
+        <section className="mb-3">
+          <h2 className="mb-1 border-b border-gray-400 text-[13pt] font-bold">
+            Certifications
+          </h2>
+          {certifications.map((c, i) => (
+            <p key={i} className="text-[10pt]">
+              <strong>{c.name}</strong> — {c.issuer} ({c.date})
+            </p>
+          ))}
+        </section>
+      )}
+
+      {/* Achievements */}
+      {achievements.length > 0 && (
+        <section className="mb-3">
+          <h2 className="mb-1 border-b border-gray-400 text-[13pt] font-bold">
+            Achievements
+          </h2>
+          <ul className="ml-5 list-disc">
+            {achievements.map((a, i) => (
+              <li key={i} className="text-[9.5pt] leading-snug">
+                <strong>{a.title}</strong> — {a.description}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
 
 export default function LatexPreview() {
   const { data } = useResume();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [compiling, setCompiling] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [latexSource, setLatexSource] = useState("");
   const [showSource, setShowSource] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const renderLatex = useCallback(async (latex: string) => {
-    setCompiling(true);
-    setError(null);
-    try {
-      // Dynamic import to avoid SSR issues
-      const { parse, HtmlGenerator } = await import("latex.js");
-      const generator = new HtmlGenerator({ hyphenate: false });
-      const doc = parse(latex, { generator });
-      const domFragment = doc.domFragment();
-
-      if (containerRef.current) {
-        containerRef.current.innerHTML = "";
-
-        // Create a wrapper that applies latex.js styles
-        const wrapper = document.createElement("div");
-
-        // Get the latex.js default styles
-        const styleElement = doc.stylesAndScripts("none");
-        if (styleElement) {
-          wrapper.appendChild(styleElement);
-        }
-
-        wrapper.appendChild(domFragment);
-        containerRef.current.appendChild(wrapper);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "LaTeX compilation failed");
-    } finally {
-      setCompiling(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const latex = generateLatex(data);
-    setLatexSource(latex);
-
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      renderLatex(latex);
-    }, 400);
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [data, renderLatex]);
+  const latexSource = generateLatex(data);
 
   return (
     <div className="flex h-full flex-col">
       {/* Toolbar */}
       <div className="flex items-center justify-between border-b border-border/60 px-4 py-2">
-        <div className="flex items-center gap-2">
-          <h2 className="font-heading text-sm font-semibold tracking-tight">
-            Preview
-          </h2>
-          {compiling && (
-            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="size-1.5 animate-pulse rounded-full bg-primary" />
-              Compiling…
-            </span>
-          )}
-        </div>
+        <h2 className="font-heading text-sm font-semibold tracking-tight">
+          Preview
+        </h2>
         <button
           type="button"
           onClick={() => setShowSource(!showSource)}
@@ -83,13 +190,6 @@ export default function LatexPreview() {
         </button>
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="mx-4 mt-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-          {error}
-        </div>
-      )}
-
       {/* Content */}
       {showSource ? (
         <div className="flex-1 overflow-auto p-4">
@@ -98,12 +198,17 @@ export default function LatexPreview() {
           </pre>
         </div>
       ) : (
-        <div className="flex-1 overflow-auto bg-muted/20 p-4">
+        <div className="flex-1 overflow-auto bg-gray-100 p-6">
           <div
-            ref={containerRef}
-            className="mx-auto w-full max-w-[210mm] rounded-lg border border-border bg-white p-6 shadow-sm"
-            style={{ minHeight: "297mm", color: "#000" }}
-          />
+            className="mx-auto rounded border border-gray-300 bg-white shadow-md"
+            style={{
+              width: "210mm",
+              minHeight: "297mm",
+              padding: "20mm 18mm",
+            }}
+          >
+            <ResumeDocument data={data} />
+          </div>
         </div>
       )}
     </div>
