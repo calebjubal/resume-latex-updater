@@ -4,6 +4,8 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -22,6 +24,9 @@ import {
 
 interface ResumeContextValue {
   data: ResumeData;
+  loading: boolean;
+  saving: boolean;
+  lastSaved: Date | null;
   updateContact: (contact: ContactInfo) => void;
   updateSummary: (summary: SummaryInfo) => void;
   updateSkills: (skills: SkillCategory[]) => void;
@@ -30,12 +35,57 @@ interface ResumeContextValue {
   updateEducation: (education: EducationEntry[]) => void;
   updateCertifications: (certifications: CertificationEntry[]) => void;
   updateAchievements: (achievements: AchievementEntry[]) => void;
+  saveResume: () => Promise<void>;
 }
 
 const ResumeContext = createContext<ResumeContextValue | null>(null);
 
 export function ResumeProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<ResumeData>(DEFAULT_RESUME);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  // Load resume from API on mount (syncs Clerk user + fetches resume)
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch("/api/resume");
+        if (res.ok) {
+          const json = await res.json();
+          if (json.resume?.data) {
+            setData(json.resume.data as ResumeData);
+          }
+        }
+      } catch {
+        // Silently fall back to DEFAULT_RESUME
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  // Save resume to API
+  const saveResume = useCallback(async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/resume/save", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: dataRef.current }),
+      });
+      if (res.ok) {
+        setLastSaved(new Date());
+      }
+    } catch {
+      // Handle silently — could add error state later
+    } finally {
+      setSaving(false);
+    }
+  }, []);
 
   const updateContact = useCallback(
     (contact: ContactInfo) => setData((prev) => ({ ...prev, contact })),
@@ -78,6 +128,9 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
     <ResumeContext.Provider
       value={{
         data,
+        loading,
+        saving,
+        lastSaved,
         updateContact,
         updateSummary,
         updateSkills,
@@ -86,6 +139,7 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
         updateEducation,
         updateCertifications,
         updateAchievements,
+        saveResume,
       }}
     >
       {children}

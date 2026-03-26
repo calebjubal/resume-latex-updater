@@ -86,6 +86,16 @@ export default function ResumeEditor() {
     }
   };
 
+  if (resume.loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-sm text-muted-foreground animate-pulse">
+          Loading resume…
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col">
       {/* Tab bar */}
@@ -109,6 +119,23 @@ export default function ResumeEditor() {
 
       {/* Active form */}
       <div className="flex-1 overflow-y-auto p-4">{renderActiveForm()}</div>
+
+      {/* Save bar */}
+      <div className="flex items-center justify-between border-t border-border/60 px-4 py-2.5">
+        <span className="text-[10px] text-muted-foreground">
+          {resume.lastSaved
+            ? `Saved ${resume.lastSaved.toLocaleTimeString()}`
+            : "Not saved yet"}
+        </span>
+        <button
+          type="button"
+          onClick={resume.saveResume}
+          disabled={resume.saving}
+          className="rounded-lg bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+        >
+          {resume.saving ? "Saving…" : "Save"}
+        </button>
+      </div>
     </div>
   );
 }
