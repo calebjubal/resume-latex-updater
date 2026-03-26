@@ -2,8 +2,9 @@
 
 import { useResume } from "@/lib/resume-context";
 import { generateLatex } from "@/lib/latex-template";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ResumeData } from "@/lib/default-resume";
+import { Download } from "lucide-react";
 
 function ResumeDocument({ data }: { data: ResumeData }) {
   const { contact, summary, skills, experience, projects, education, certifications, achievements } = data;
@@ -172,7 +173,31 @@ function ResumeDocument({ data }: { data: ResumeData }) {
 export default function LatexPreview() {
   const { data } = useResume();
   const [showSource, setShowSource] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const resumeRef = useRef<HTMLDivElement>(null);
   const latexSource = generateLatex(data);
+
+  const downloadPdf = async () => {
+    if (!resumeRef.current) return;
+    setDownloading(true);
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      await html2pdf()
+        .set({
+          margin: 0,
+          filename: `${data.contact.name.replace(/\s+/g, "_")}_Resume.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .from(resumeRef.current)
+        .save();
+    } catch {
+      // Silently fail
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -181,13 +206,24 @@ export default function LatexPreview() {
         <h2 className="font-heading text-sm font-semibold tracking-tight">
           Preview
         </h2>
-        <button
-          type="button"
-          onClick={() => setShowSource(!showSource)}
-          className="rounded-md border border-border/60 px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          {showSource ? "Preview" : "LaTeX Source"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowSource(!showSource)}
+            className="rounded-md border border-border/60 px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            {showSource ? "Preview" : "LaTeX Source"}
+          </button>
+          <button
+            type="button"
+            onClick={downloadPdf}
+            disabled={downloading}
+            className="flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+          >
+            <Download className="size-3" />
+            {downloading ? "Exporting…" : "Download PDF"}
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -200,6 +236,7 @@ export default function LatexPreview() {
       ) : (
         <div className="flex-1 overflow-auto bg-gray-100 p-6">
           <div
+            ref={resumeRef}
             className="mx-auto rounded border border-gray-300 bg-white shadow-md"
             style={{
               width: "210mm",
