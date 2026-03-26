@@ -1,8 +1,15 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { ResumeProvider } from "@/lib/resume-context";
-import ResumeEditor from "@/components/resume-editor";
-import LatexPreview from "@/components/latex-preview";
+
+const ResumeEditor = dynamic(() => import("@/components/resume-editor"), {
+  ssr: false,
+});
+
+const LatexPreview = dynamic(() => import("@/components/latex-preview"), {
+  ssr: false,
+});
 
 export default function Home() {
   return (
